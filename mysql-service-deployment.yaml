@@ -1,0 +1,90 @@
+---
+apiVersion: v1
+kind: Service #Exposes the Service on a cluster-internal IP. 
+#Choosing this value makes the Service only reachable from within the cluster. 
+metadata:
+    name: mysql
+spec:
+    selector: #Route service traffic to pods with label keys and values matching this selector.
+        app: mysql
+    ports:
+    - port: 3306 #The port that will be exposed by this service.
+      targetPort: 3306 #Number or name of the port to access on the pods targeted by the service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-db-config
+data:
+  DB_HOSTNAME: mysql
+  DATABASE_NAME: sample_db
+  DB_USERNAME: root
+  DB_PORT: '3306'
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+data:
+  root-password: bXlzcWw=
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  key: DATABASE_NAME
+                  name: mysql-db-config
+            - name: DB_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_USERNAME
+                  name: mysql-db-config
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: root-password
+                  name: mysql-secret
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+      

@@ -1,0 +1,63 @@
+---
+apiVersion: v1
+kind: Service #Exposes the Service on a cluster-internal IP. 
+#Choosing this value makes the Service only reachable from within the cluster. 
+metadata:
+    name: node-app
+spec:
+    type: NodePort
+    selector: #Route service traffic to pods with label keys and values matching this selector.
+        app: node-app
+    ports:
+    - port: 80 #The port that will be exposed by this service.
+      targetPort: 3000 #Number or name of the port to access on the pods targeted by the service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-app-deployment
+spec:
+  selector:
+    matchLabels:
+      app: node-app
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: node-app
+    spec:
+      containers:
+        - name: node-app
+          image: ankitkawtia/node-app-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_HOSTNAME
+                  name: mysql-db-config
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_USERNAME
+                  name: mysql-db-config
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: root-password
+                  name: mysql-secret
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DATABASE_NAME
+                  name: mysql-db-config
+          resources:
+            requests:
+              cpu: "100m"    # Lower request
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
