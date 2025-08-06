@@ -22,6 +22,11 @@ spec:
     matchLabels:
       app: node-app
   replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
   template:
     metadata:
       labels:
@@ -56,7 +61,7 @@ spec:
                   name: mysql-db-config
           resources:
             requests:
-              cpu: "100m"    # Lower request
+              cpu: "50m"    # Lower request
               memory: "128Mi"
             limits:
               cpu: "250m"
